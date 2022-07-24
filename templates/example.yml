@@ -1,0 +1,42 @@
+id: 20220701
+emitted: 2022-07-25T00:00:00.000000000+00:00
+delivered: 2022-08-05T00:00:00.000000000+00:00
+
+# Personal info
+name: My name
+info: |-
+  Address to House 123
+  ://website | @email | +00 PH0N3 NUMB3R
+
+# Client info
+client: |-
+  Client address
+  Office 1234
+  1234, Country
+  client@email
+
+services:
+- description: Software development service
+  unitcost: 10
+  unit: h.
+  quantity: 100
+- description: Software QA service
+  unitcost: 10
+  unit: hours
+  quantity: 20
+
+taxes:
+- description: VAT
+  value: 21
+- description: VAT2
+  value: 3
+
+currency: €
+
+net: false
+
+# Bank details
+account: |-
+  Acc Name: My name
+  IBAN : XX0000000000000000
+  SWIFT: BANKXX00

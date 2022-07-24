@@ -1,0 +1,13 @@
+# Available fonts without any further configuration are: Arial Courier, Helvetica and Times
+# Check the README.md to see how to add more fonts.
+
+# fontBody:
+# fontBodyBold:
+fontTitle: Helvetica
+# fontDescriptorFile:
+
+title: INVOICE
+dateFormat: 02/01/2006
+footerTitle: Payment details
+dateText1: Issue date
+dateText2: Due date

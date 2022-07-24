@@ -1,0 +1,18 @@
+### invoice project ###
+tmp
+
+/templates/*
+!/templates/example.yml
+!/templates/config.yml
+
+/fonts/*
+!/fonts/*.ttf
+!/fonts/*.map
+
+### VisualStudioCode ###
+# Debugger
+__debug_bin
+
+### Golang ###
+# Binaries
+bin/

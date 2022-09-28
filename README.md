@@ -1,28 +1,65 @@
 # invoice
 
-A simple way to generate invoices.
+A simple way to generate invoices
 
-## Input file example
+## Result file example
 
-```yml
-fontBody: Arial
-fontBodyBold: Arial
-fontTitle: Helvetica
-fontDescriptorFile: iso-8859-15.map
+<img src="example.png" alt="drawing" width="300"/>
 
-title: INVOICE
-dateFormat: 02/01/2006
-footerTitle: Payment details
-dateText1: Issue date
-dateText2: Due date
+## How to use
+
+There are two ways of using the invoice tool:
+
+1. Using a binary file. So you don't need to deal with any code.
+2. Running the `main.go` file. Which needs some previous setup.
+
+### 1. Using the binary file
+
+#### Download
+
+Depending on the operating system you are on, you can download and use the [latest released binary](https://github.com/noelruault/invoice/releases/latest)
+
+Or use the following magic command to do such download automatically (tested on MacOS):
+
+```bash
+if [[ $(uname -p) == 'i386' ]]; then CHIP=amd; else CHIP=$(uname -p); fi; \
+OS=$(uname -s | tr '[:upper:]' '[:lower:]'); \
+curl -s https://api.github.com/repos/noelruault/invoice/releases/latest \
+| grep "browser_download_url" \
+| grep "$OS.*$CHIP" \
+| cut -d : -f 2,3 \
+| tr -d \" \
+| xargs wget -qO- \
+| tar xvz
 ```
 
-[input file example](example.yml)
+[Providing an input file](#input-file) with a suitable data structure is necessary for writing data to the invoice.
 
-## Config file example
+```bash
+./invoice -input="./templates/input.yml"
+```
+
+## 2. Running the program using Golang
+
+The bare minimum setup to run the invoice tool is to [provide a yaml file](#input-file).
+
+```bash
+go run cmd/main.go -input="./templates/input.yml"
+```
+
+Optionally, a [config file](#config-file) containing specific information about fonts and texts can also be provided.
+
+## Required and optional configuration files
+
+## Input file
+
+**Required**
 
 ```yml
-
+# input.yml
+id: 20220701
+emitted: 2022-07-25T00:00:00.000000000+00:00
+delivered: 2022-08-05T00:00:00.000000000+00:00
 
 name: My name
 info: |-
@@ -65,7 +102,31 @@ account: |-
   SWIFT: BANKXX00
 ```
 
-[config file example](config.yml)
+> [input file example](./templates/input.yml)
+
+
+## Config file
+
+**Optional**
+
+The configuration file example is not mandatory and can be used to change fonts, some texts and the date format.
+
+```yml
+# config.yml
+
+fontBody: Arial
+fontBodyBold: Arial
+fontTitle: Helvetica
+
+dateFormat: 02/01/2006
+
+textTitle: INVOICE
+textFooterTitle: Payment details
+textDate1: Issue date
+textDate2: Due date
+```
+
+> [config file example](./templates/config.yml)
 
 ## VAT
 
@@ -76,8 +137,12 @@ Value Added Tax is calculated in two different ways, depending on the `net` bool
 ```
 hours: 2
 price: 4
+vat:   21%
 net:   true
-2 - 2 * 0.21 = 1.58 hour * 4 hours = 8€
+
+2 * (4 - 4 * 0.21) + (4 * 0.21)
+(2 * 3,16) + (2 * 0,84)
+= 8€
 ```
 
 - If net is false, the prices will be displayed as they are provided, and the VAT value(s) will be added to the total price at the end.
@@ -85,14 +150,18 @@ net:   true
 ```
 hours: 2
 price: 4
-net:   true
-2 hour * 4 hours = 8 + 0.21% = 9,68€
+vat:   21%
+net:   false
+
+2 * 4 + (2 * 4 * 0.21)
+8 + 1,68
+= 9,68€
 ````
 
 ## Fonts
 
 ```
-    fonts/iso-8859-15.map is used to display characters such as '@', that don't come natively with other map encodings.
+fonts/iso-8859-15.map is used to display characters such as '@', that don't come natively with other map encodings.
 ```
 
 ### How to download and use new fonts
@@ -102,19 +171,14 @@ net:   true
 - run command `make font`, e.g:
 
 ```
-    echo Belleza-Regular.ttf | make font
-    echo Raleway-Regular.ttf | make font
-    echo Raleway-SemiBold.ttf | make font
-    echo Aldrich-Regular.ttf | make font
+echo Belleza-Regular.ttf | make font
+echo Raleway-Regular.ttf | make font
+echo Raleway-SemiBold.ttf | make font
+echo Aldrich-Regular.ttf | make font
 ```
 
 - change font names (without extension) on config file
 
 ```
-    fontTitle: Aldrich-Regular
+fontTitle: Aldrich-Regular
 ```
-
-## TODO
-
-[ ] Don't override file if same file name is provided
-[ ] File name based on ID

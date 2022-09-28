@@ -1,9 +1,13 @@
 package invoice
 
 import (
+	"bytes"
+	_ "embed"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
 	"unicode/utf8"
@@ -15,37 +19,53 @@ import (
 var (
 	titleFont = "titleFont"
 	bodyFont  = "bodyFont"
+
+	//go:embed fonts/iso-8859-15.map
+	fontDescriptorFileBytes []byte
+
+	// current root path of package
+	_, b, _, _ = runtime.Caller(0)
+	basepath   = filepath.Dir(b)
 )
 
 type Configuration struct {
-	DateFormat         string `yaml:"dateFormat"`
-	DateText1          string `yaml:"dateText1"`
-	DateText2          string `yaml:"dateText2"`
-	FontBody           string `yaml:"fontBody"`
-	FontBodyBold       string `yaml:"fontBodyBold"`
-	FontDescriptorFile string `yaml:"fontDescriptorFile"`
-	FontTitle          string `yaml:"fontTitle"`
-	FooterTitle        string `yaml:"footerTitle"`
-	TableColumns       string `yaml:"tableColumns"`
-	Title              string `yaml:"title"`
-	Net                bool   `yaml:"net"`
+	DateFormat         string   `yaml:"dateFormat"`
+	FontBody           string   `yaml:"fontBody"`
+	FontBodyBold       string   `yaml:"fontBodyBold"`
+	FontDescriptorFile string   `yaml:"fontDescriptorFile"`
+	FontTitle          string   `yaml:"fontTitle"`
+	Net                bool     `yaml:"net"`
+	TextDate1          string   `yaml:"textDate1"`
+	TextDate2          string   `yaml:"textDate2"`
+	TextFooterTitle    string   `yaml:"textFooterTitle"`
+	TextTableColumns   []string `yaml:"textTableColumns"`
+	TextTitle          string   `yaml:"textTitle"`
 }
 
 func NewConfig(path string) (*Configuration, error) {
+	c := Configuration{
+		FontBody:     "Arial",
+		FontBodyBold: "Arial",
+		FontTitle:    "Arial",
+
+		DateFormat: "02/01/2006",
+
+		TextTitle:        "INVOICE",
+		TextDate1:        "Issue date",
+		TextDate2:        "Due date",
+		TextFooterTitle:  "Payment details",
+		TextTableColumns: []string{"Description", "Quantity", "Price", "Line Total"},
+	}
+
+	if path == "" {
+		return &c, nil
+	}
+
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	// Default configuration values
-	c := Configuration{
-		FontBody:           "Arial",
-		FontBodyBold:       "Arial",
-		FontTitle:          "Arial",
-		FontDescriptorFile: "",
-
-		DateFormat: "02/01/2006",
-	}
 	err = yaml.Unmarshal(data, &c)
 	if err != nil {
 		return nil, err
@@ -142,19 +162,28 @@ type PDF struct {
 	*gofpdf.Fpdf
 }
 
-func (i *Invoice) PDF(configFile, output string) error {
+func (i *Invoice) PDF(configFile, output string) (*string, error) {
 	config, err := NewConfig(configFile)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	pdf := PDF{gofpdf.New("P", "mm", "A4", "")}
 	if err := pdf.loadFonts(config); err != nil {
-		return err
+		return nil, err
 	}
 
 	pdf.AddPage()
-	tr := pdf.UnicodeTranslatorFromDescriptor(config.FontDescriptorFile)
+
+	var tr func(string) string
+	if config.FontDescriptorFile == "" {
+		tr = pdf.UnicodeTranslatorFromDescriptor(config.FontDescriptorFile)
+	} else {
+		tr, err = gofpdf.UnicodeTranslator(bytes.NewReader(fontDescriptorFileBytes))
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	pdf.SetXY(20, 20)
 	pdf.SetFont(bodyFont, "", 12)
@@ -171,7 +200,7 @@ func (i *Invoice) PDF(configFile, output string) error {
 
 	pdf.SetXY(20, 80)
 	pdf.SetFont(titleFont, "", 40)
-	pdf.Write(0, tr(fmt.Sprintf("%s", config.Title)))
+	pdf.Write(0, tr(fmt.Sprintf("%s", config.TextTitle)))
 
 	pdf.SetFont(bodyFont, "", 20)
 	pdf.SetXY(20, 95)
@@ -181,12 +210,17 @@ func (i *Invoice) PDF(configFile, output string) error {
 	pdf.SetFontSize(10)
 
 	var dateStr string
-	dateStr += config.DateText1 + ":  " + i.Emitted.Format(config.DateFormat) + "\n"
-	dateStr += config.DateText2 + ":  " + i.Delivered.Format(config.DateFormat) + "\n"
+	dateStr += config.TextDate1 + ":  " + i.Emitted.Format(config.DateFormat) + "\n"
+	dateStr += config.TextDate2 + ":  " + i.Delivered.Format(config.DateFormat) + "\n"
 	pdf.MultiCell(0, 5, tr(dateStr), "", "", false)
 
 	var lineNumber int
-	makeLine := func(description, quantity, unitCost, amount string) {
+	// makeLine := func(description, quantity, unitCost, amount string) {
+	makeLine := func(columns ...string) {
+		if len(columns) > 4 {
+			log.Fatal("number of columns for main table must be 4")
+		}
+
 		if lineNumber == 0 {
 			pdf.SetFont(bodyFont, "B", 12)
 		} else {
@@ -194,10 +228,10 @@ func (i *Invoice) PDF(configFile, output string) error {
 		}
 
 		pdf.SetX(20)
-		pdf.Cell(80, 5, tr(description))
-		pdf.CellFormat(30, 5, tr(quantity), "", 0, "R", false, 0, "")
-		pdf.CellFormat(30, 5, tr(unitCost), "", 0, "R", false, 0, "")
-		pdf.CellFormat(30, 5, tr(amount), "", 0, "R", false, 0, "")
+		pdf.Cell(80, 5, tr(columns[0]))
+		pdf.CellFormat(30, 5, tr(columns[1]), "", 0, "R", false, 0, "")
+		pdf.CellFormat(30, 5, tr(columns[2]), "", 0, "R", false, 0, "")
+		pdf.CellFormat(30, 5, tr(columns[3]), "", 0, "R", false, 0, "")
 
 		if lineNumber == 0 {
 			pdf.Ln(6)
@@ -211,7 +245,7 @@ func (i *Invoice) PDF(configFile, output string) error {
 	}
 
 	pdf.Ln(10)
-	makeLine("Description", "Quantity", "Price", "Line total")
+	makeLine(config.TextTableColumns...)
 
 	for _, s := range i.Services {
 		makeLine(s.format(i.Currency, i.Taxes, i.Net))
@@ -248,7 +282,7 @@ func (i *Invoice) PDF(configFile, output string) error {
 
 	pdf.SetXY(20, 245)
 	pdf.SetFont(bodyFont, "B", 12)
-	pdf.Write(0, tr(fmt.Sprintf("%s", config.FooterTitle)))
+	pdf.Write(0, tr(fmt.Sprintf("%s", config.TextFooterTitle)))
 
 	pdf.SetXY(20, 250)
 	pdf.SetFont(bodyFont, "", 11)
@@ -257,19 +291,32 @@ func (i *Invoice) PDF(configFile, output string) error {
 	pdf.SetXY(180, 275)
 	pdf.Write(0, tr("Page 1/1"))
 
-	return pdf.OutputFileAndClose(output)
-}
-
-func Generate(config, input, output string) error {
-	data, err := ioutil.ReadFile(input)
-	if err != nil {
-		return err
+	if output == "" {
+		output = i.ID + ".pdf"
 	}
 
-	var i Invoice
+	err = pdf.OutputFileAndClose(output)
+	if err != nil {
+		return nil, err
+	}
+
+	return &output, nil
+}
+
+func Generate(config, input, output string) (*string, error) {
+	data, err := ioutil.ReadFile(input)
+	if err != nil {
+		return nil, err
+	}
+
+	i := Invoice{
+		ID:        time.Now().Format("20060102"),
+		Emitted:   time.Now(),
+		Delivered: time.Now().AddDate(0, 0, 5),
+	}
 	err = yaml.Unmarshal(data, &i)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	return i.PDF(config, output)

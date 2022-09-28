@@ -2,12 +2,14 @@
 tmp
 
 /templates/*
-!/templates/example.yml
+!/templates/input.yml
 !/templates/config.yml
 
 /fonts/*
 !/fonts/*.ttf
 !/fonts/*.map
+
+*.pdf
 
 ### VisualStudioCode ###
 # Debugger

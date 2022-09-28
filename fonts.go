@@ -5,14 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
-	"runtime"
-)
-
-var (
-	// current root path of package
-	_, b, _, _ = runtime.Caller(0)
-	basepath   = filepath.Dir(b)
 )
 
 // http://www.fpdf.org/en/doc/setfont.htm

@@ -2,11 +2,8 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
-	"path/filepath"
-	"runtime"
 
 	"github.com/noelruault/invoice"
 )
@@ -18,12 +15,9 @@ type Flags struct {
 }
 
 func parseFlags() *Flags {
-	_, b, _, _ := runtime.Caller(0)
-	basepath := filepath.Dir(b)
-
-	config := flag.String("config", basepath+"/../templates/config.yml", "")
-	input := flag.String("input", basepath+"/../templates/example.yml", "")
-	output := flag.String("output", basepath+"/../tmp/output.pdf", "")
+	config := flag.String("config", "", "YML file that contains information about the fonts and texts")
+	input := flag.String("input", "", "(required) YML file that contains all the data required to model the invoice")
+	output := flag.String("output", "", "Full path of the output PDF file")
 
 	flag.Parse()
 
@@ -37,13 +31,18 @@ func parseFlags() *Flags {
 func main() {
 	flags := parseFlags()
 
-	err := invoice.Generate(flags.Config, flags.Input, flags.Output)
+	if flags.Input == "" {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	output, err := invoice.Generate(flags.Config, flags.Input, flags.Output)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		log.Print(err)
 		os.Exit(1)
 	}
 
 	log.Printf("Config: %s", flags.Config)
 	log.Printf("Input template: %s", flags.Input)
-	log.Printf("File created at: %s", flags.Output)
+	log.Printf("File created at: %s", *output)
 }

@@ -39,6 +39,8 @@ curl -s https://api.github.com/repos/noelruault/invoice/releases/latest \
 ./invoice -input="./templates/input.yml"
 ```
 
+> Resolve MacOS ["cannot be opened because the developer cannot be verified"](https://gist.github.com/noelruault/6d67933c95127b592c44eaee25dfc7e9) error
+
 ## 2. Running the program using Golang
 
 The bare minimum setup to run the invoice tool is to [provide a yaml file](#input-file).
